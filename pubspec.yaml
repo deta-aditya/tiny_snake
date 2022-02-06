@@ -1,5 +1,5 @@
-name: flutter_snake
-description: A new Flutter project.
+name: tiny_snake
+description: Classic snake game from your phone, build with Flutter.
 
 # The following line prevents the package from being accidentally published to
 # pub.dev using `pub publish`. This is preferred for private packages.

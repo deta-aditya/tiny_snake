@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_snake/game.dart';
+import 'game.dart';
 
 void main() {
   runApp(MyApp());

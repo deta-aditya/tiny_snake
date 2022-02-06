@@ -3,10 +3,10 @@ import 'dart:collection';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_snake/model/direction.dart';
-import 'package:flutter_snake/model/food.dart';
-import 'package:flutter_snake/model/position.dart';
-import 'package:flutter_snake/model/snake.dart';
+import '../model/direction.dart';
+import '../model/food.dart';
+import '../model/position.dart';
+import '../model/snake.dart';
 
 class GameState extends ChangeNotifier {
   static const int UnitSize = 10;

@@ -1,6 +1,6 @@
-# flutter_snake
+# Tiny Snake
 
-A new Flutter project.
+Classic snake game from your phone, build with Flutter.
 
 ## Getting Started
 

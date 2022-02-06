@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_snake/state/game_state.dart';
 import 'package:provider/provider.dart';
 
+import 'state/game_state.dart';
 import 'model/direction.dart';
 import 'model/position.dart';
 
