@@ -58,8 +58,15 @@ class GameState extends ChangeNotifier {
 
     _food = _generateFood();
     _timer = _generateTimer();
+    _isGameLost = false;
 
     notifyListeners();
+  }
+
+  void restart() {
+    if (isStarted) {
+      start(_xBoundary!.toDouble(), _yBoundary!.toDouble());
+    }
   }
 
   void turn(Direction direction) {
