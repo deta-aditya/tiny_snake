@@ -141,7 +141,7 @@ class GameOverOverlay extends StatelessWidget {
             ),
             ElevatedButton(
               onPressed: () {
-                Navigator.of(context).pop();
+                context.read<GameState>().restart();
               },
               child: const Text('Play Again'),
               style: ElevatedButton.styleFrom(
