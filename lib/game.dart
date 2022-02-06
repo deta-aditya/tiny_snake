@@ -49,14 +49,9 @@ class Game extends StatelessWidget {
 
                       return Stack(
                         children: [
-                          Positioned.fill(
-                            right: (xBoundary - xBoundary.floor()) *
-                                GameState.UnitSize,
-                            bottom: (yBoundary - yBoundary.floor()) *
-                                GameState.UnitSize,
-                            child: Container(
-                              color: Colors.grey.shade200,
-                            ),
+                          GameBoundary(
+                            xBoundary: xBoundary,
+                            yBoundary: yBoundary,
                           ),
                           if (game.isStarted)
                             FoodView(position: game.foodPosition!),
@@ -78,6 +73,28 @@ class Game extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class GameBoundary extends StatelessWidget {
+  const GameBoundary({
+    Key? key,
+    required this.xBoundary,
+    required this.yBoundary,
+  }) : super(key: key);
+
+  final double xBoundary;
+  final double yBoundary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      right: (xBoundary - xBoundary.floor()) * GameState.UnitSize,
+      bottom: (yBoundary - yBoundary.floor()) * GameState.UnitSize,
+      child: Container(
+        color: Colors.grey.shade200,
+      ),
     );
   }
 }
