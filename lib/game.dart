@@ -71,9 +71,17 @@ class Game extends StatelessWidget {
                 ),
               ],
             ),
-            floatingActionButton: context.watch<GameState>().isPaused
-                ? AbortButton()
-                : PauseButton(),
+            floatingActionButton: Consumer<GameState>(
+              builder: (context, game, child) {
+                if (game.isPaused) {
+                  return AbortButton(); 
+                }
+                if (!game.isGameLost) {
+                  return PauseButton();
+                }
+                return Container();
+              }
+            ),
           ),
         );
       },
