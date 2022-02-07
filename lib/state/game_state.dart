@@ -21,6 +21,7 @@ class GameState extends ChangeNotifier {
   int? _yBoundary;
   Timer? _timer;
 
+  bool _isPaused = false;
   bool _isGameLost = false;
 
   final ListQueue<Direction> _commandQueue = ListQueue.of([]);
@@ -39,6 +40,8 @@ class GameState extends ChangeNotifier {
   Position? get foodPosition => _food?.position;
 
   bool get isGameLost => _isGameLost;
+
+  bool get isPaused => _isPaused && !_isGameLost;
 
   void start(double xBoundary, double yBoundary) {
     _xBoundary = xBoundary.floor();
@@ -71,6 +74,18 @@ class GameState extends ChangeNotifier {
 
   void turn(Direction direction) {
     _commandQueue.addFirst(direction);
+  }
+
+  void pause() {
+    _isPaused = true;
+    _timer?.cancel();
+    notifyListeners();
+  }
+
+  void resume() {
+    _isPaused = false;
+    _timer = _generateTimer();
+    notifyListeners();
   }
 
   void stop() {

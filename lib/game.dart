@@ -56,6 +56,7 @@ class Game extends StatelessWidget {
                           if (game.isStarted)
                             FoodView(position: game.foodPosition!),
                           ...renderSnake(game.snakeBody),
+                          if (game.isPaused) PauseOverlay(),
                           if (game.isGameLost) GameOverOverlay(),
                           if (isDebugMode) DebugOverlay(),
                         ],
@@ -70,9 +71,94 @@ class Game extends StatelessWidget {
                 ),
               ],
             ),
+            floatingActionButton: Consumer<GameState>(
+              builder: (context, game, child) {
+                if (game.isPaused) {
+                  return AbortButton(); 
+                }
+                if (!game.isGameLost) {
+                  return PauseButton();
+                }
+                return Container();
+              }
+            ),
           ),
         );
       },
+    );
+  }
+}
+
+class PauseButton extends StatelessWidget {
+  const PauseButton({
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return FloatingActionButton(
+      child: Icon(Icons.pause),
+      mini: true,
+      onPressed: () {
+        context.read<GameState>().pause();
+      },
+    );
+  }
+}
+
+class AbortButton extends StatelessWidget {
+  const AbortButton({
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return FloatingActionButton(
+      child: Icon(Icons.close),
+      backgroundColor: Colors.red,
+      mini: true,
+      onPressed: () {
+        Navigator.pop(context);
+      },
+    );
+  }
+}
+
+class PauseOverlay extends StatelessWidget {
+  const PauseOverlay({
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: GestureDetector(
+        child: Container(
+          color: Colors.white.withOpacity(0.5),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Paused',
+                style: const TextStyle(
+                  fontSize: 36,
+                ),
+              ),
+              SizedBox(
+                height: 10,
+              ),
+              Text(
+                'Press anywhere to resume',
+                style: const TextStyle(
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+        onTap: () => context.read<GameState>().resume(),
+      ),
     );
   }
 }
@@ -236,15 +322,17 @@ class DirectionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: () {
-        context.read<GameState>().turn(direction);
+    return Consumer<GameState>(
+      builder: (context, game, child) {
+        return ElevatedButton(
+          onPressed: !game.isPaused ? () => game.turn(direction) : null,
+          child: Text(text),
+          style: ElevatedButton.styleFrom(
+            shape: const CircleBorder(),
+            padding: const EdgeInsets.all(24),
+          ),
+        );
       },
-      child: Text(text),
-      style: ElevatedButton.styleFrom(
-        shape: const CircleBorder(),
-        padding: const EdgeInsets.all(24),
-      ),
     );
   }
 }
