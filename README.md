@@ -1,4 +1,4 @@
-[![Flutter](https://github.com/deta-aditya/tiny_snake/actions/workflows/flutter.yml/badge.svg?branch=main)](https://github.com/deta-aditya/tiny_snake/actions/workflows/flutter.yml)
+[![Flutter](https://github.com/deta-aditya/tiny_snake/actions/workflows/flutter.yml/badge.svg)](https://github.com/deta-aditya/tiny_snake/actions/workflows/flutter.yml)
 
 # Tiny Snake
 
