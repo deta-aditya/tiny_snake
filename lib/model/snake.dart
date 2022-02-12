@@ -2,7 +2,7 @@ import 'direction.dart';
 import 'position.dart';
 
 class Snake {
-  Snake({required this.body, required this.length});
+  Snake._({required this.body, required this.length});
 
   final List<Position> body;
   final int length;
@@ -21,22 +21,28 @@ class Snake {
     List<Position>? body,
     int? length,
   }) {
-    return Snake(
+    return Snake._(
       body: body ?? this.body,
       length: length ?? this.length,
     );
   }
 
-  Snake move(Direction direction) {
+  MoveResult move(Direction direction) {
     final newBody = [_newBodySegment(direction, body.first), ...body];
 
-    if (body.length < length) {
-      return copyWith(
-        body: newBody,
-      );
+    if (_isMovingContradictorily(newBody)) {
+      return MoveResult(MoveState.contradictory, copyWith());
     }
 
-    return copyWith(body: newBody..removeLast());
+    if (_isCommittingSuicide(newBody)) {
+      return MoveResult(MoveState.suicide, copyWith());
+    }
+
+    if (body.length < length) {
+      return MoveResult(MoveState.success, copyWith(body: newBody));
+    }
+
+    return MoveResult(MoveState.success, copyWith(body: newBody..removeLast()));
   }
 
   Snake grow(int addition) {
@@ -55,4 +61,26 @@ class Snake {
         return prev.copyWith(left: prev.left - 1);
     }
   }
+
+  bool _isMovingContradictorily(List<Position> body) {
+    return body.length >= 3 && body.first == body[2];
+  }
+
+  bool _isCommittingSuicide(List<Position> body) {
+    final uniquePositions = Set<Position>();
+    return body.any((segment) => !uniquePositions.add(segment));
+  }
+}
+
+enum MoveState {
+  success,
+  contradictory,
+  suicide,
+}
+
+class MoveResult {
+  final MoveState state;
+  final Snake nextSnake;
+
+  MoveResult(this.state, this.nextSnake);
 }
