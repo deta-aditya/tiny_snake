@@ -16,7 +16,7 @@ class Position {
     );
   }
 
-  Position.random({required int xMax, required int yMax}) {
+  Position.random(int xMax, int yMax) {
     final rng = Random();
     this.left = rng.nextInt(xMax);
     this.top = rng.nextInt(yMax);

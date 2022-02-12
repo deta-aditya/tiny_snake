@@ -1,12 +1,12 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'model/game_loop.dart';
 import 'state/game_state.dart';
 import 'model/direction.dart';
 import 'model/position.dart';
 
-class Game extends StatelessWidget {
+class Game extends StatefulWidget {
   const Game({Key? key, bool? isDebugMode})
       : this.isDebugMode = isDebugMode ?? false,
         super(key: key);
@@ -14,9 +14,33 @@ class Game extends StatelessWidget {
   final bool isDebugMode;
 
   @override
+  State<Game> createState() => _GameState();
+}
+
+class _GameState extends State<Game> {
+  late GameLoop loop;
+  late GameState game;
+
+  @override
+  void initState() {
+    super.initState();
+    game = GameState(
+      getRandomPosition: Position.random,
+      getRandomDirection: randomDirection,
+    );
+    loop = GameLoop(game);
+  }
+
+  @override
+  void dispose() {
+    loop.stop();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => GameState(),
+    return ChangeNotifierProvider.value(
+      value: game,
       builder: (context, child) {
         return SafeArea(
           child: Scaffold(
@@ -43,9 +67,13 @@ class Game extends StatelessWidget {
                       final yBoundary =
                           constraints.maxHeight / GameState.UnitSize;
 
-                      if (!game.isStarted) {
-                        game.start(xBoundary, yBoundary);
-                      }
+                      // Run when widget is finished rendering
+                      WidgetsBinding.instance
+                          ?.addPostFrameCallback((timeStamp) {
+                        if (!game.isStarted) {
+                          game.start(xBoundary, yBoundary);
+                        }
+                      });
 
                       return Stack(
                         children: [
@@ -58,7 +86,7 @@ class Game extends StatelessWidget {
                           ...renderSnake(game.snakeBody),
                           if (game.isPaused) PauseOverlay(),
                           if (game.isGameLost) GameOverOverlay(),
-                          if (isDebugMode) DebugOverlay(),
+                          if (widget.isDebugMode) DebugOverlay(),
                         ],
                       );
                     },
@@ -74,13 +102,13 @@ class Game extends StatelessWidget {
             floatingActionButton: Consumer<GameState>(
               builder: (context, game, child) {
                 if (game.isPaused) {
-                  return AbortButton(); 
+                  return AbortButton();
                 }
                 if (!game.isGameLost) {
                   return PauseButton();
                 }
                 return Container();
-              }
+              },
             ),
           ),
         );

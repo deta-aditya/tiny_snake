@@ -1,17 +1,24 @@
-import 'dart:async';
 import 'dart:collection';
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
 import '../model/direction.dart';
 import '../model/food.dart';
+import '../model/game/i_game.dart';
 import '../model/position.dart';
 import '../model/snake.dart';
 
-class GameState extends ChangeNotifier {
+typedef GetRandomPosition = Position Function(int, int);
+typedef GetRandomDirection = Direction Function();
+
+class GameState extends IGame {
   static const int UnitSize = 10;
   static const int InitialSnakeSize = 4;
   static const int InitialLoopDuration = 250;
+
+  final ListQueue<Direction> _commandQueue = ListQueue.of([]);
+  late final int _initialSnakeSize;
+  late final GetRandomPosition _getRandomPosition;
+  late final GetRandomDirection _getRandomDirection;
 
   Snake? _snake;
   Direction? _direction;
@@ -19,12 +26,17 @@ class GameState extends ChangeNotifier {
 
   int? _xBoundary;
   int? _yBoundary;
-  Timer? _timer;
 
   bool _isPaused = false;
   bool _isGameLost = false;
 
-  final ListQueue<Direction> _commandQueue = ListQueue.of([]);
+  GameState({
+    int? initialSnakeSize,
+    required GetRandomPosition getRandomPosition,
+    required GetRandomDirection getRandomDirection,
+  })  : _initialSnakeSize = initialSnakeSize ?? InitialSnakeSize,
+        _getRandomPosition = getRandomPosition,
+        _getRandomDirection = getRandomDirection;
 
   int get score => _snake != null ? _snake!.length - InitialSnakeSize : 0;
 
@@ -32,8 +44,7 @@ class GameState extends ChangeNotifier {
       _direction == null ||
       _food == null ||
       _xBoundary == null ||
-      _yBoundary == null ||
-      _timer == null);
+      _yBoundary == null);
 
   List<Position> get snakeBody => _snake?.body ?? [];
 
@@ -43,14 +54,18 @@ class GameState extends ChangeNotifier {
 
   bool get isPaused => _isPaused && !_isGameLost;
 
+  int get period => InitialLoopDuration - (50 * log(score + 1)).round();
+
+  Direction? get direction => _direction;
+
   void start(double xBoundary, double yBoundary) {
     _xBoundary = xBoundary.floor();
     _yBoundary = yBoundary.floor();
 
-    _direction = randomDirection();
+    _direction = _getRandomDirection();
 
     _snake = Snake.create(
-      length: InitialSnakeSize,
+      length: _initialSnakeSize,
       initialPosition: Position(
         // Render the snake in the middle. Later this needs to be changed
         // to random with padding
@@ -60,8 +75,9 @@ class GameState extends ChangeNotifier {
     );
 
     _food = _generateFood();
-    _timer = _generateTimer();
     _isGameLost = false;
+
+    _commandQueue.clear();
 
     notifyListeners();
   }
@@ -78,49 +94,68 @@ class GameState extends ChangeNotifier {
 
   void pause() {
     _isPaused = true;
-    _timer?.cancel();
     notifyListeners();
   }
 
   void resume() {
     _isPaused = false;
-    _timer = _generateTimer();
     notifyListeners();
   }
 
   void stop() {
-    _timer?.cancel();
     notifyListeners();
   }
 
-  void _gameLoop(Timer timer) {
-    if (_commandQueue.isNotEmpty) {
-      final newDirection = _commandQueue.removeLast();
+  LoopResult loop() {
+    if (!isStarted) {
+      return LoopResult.needStartBefore;
+    }
 
-      if (!newDirection.isOpposite(_direction!)) {
-        _direction = newDirection;
+    final result = () {
+      var newDirection =
+          _commandQueue.isNotEmpty ? _commandQueue.removeLast() : _direction!;
+      final result = _moveSnake(newDirection, _snake!);
+
+      late Snake newSnake;
+      if (result is _ResultSuccess) {
+        newDirection = result.supposedDirection;
+        newSnake = result.nextSnake;
+      } else if (result is _ResultSuicide) {
+        _isGameLost = true;
+        return LoopResult.needStop;
       }
-    }
 
-    final newSnake = _snake!.move(_direction!);
+      if (_isSnakeOutOfBound(newSnake)) {
+        _isGameLost = true;
+        return LoopResult.needStop;
+      }
 
-    if (_isSnakeOutOfBound(newSnake) || _isSnakeSuicide(newSnake)) {
-      timer.cancel();
-      _isGameLost = true;
-      notifyListeners();
-      return;
-    }
+      _direction = newDirection;
+      if (newSnake.head == _food!.position) {
+        _snake = newSnake.grow(_food!.weight);
+        _food = _generateFood();
+        return LoopResult.needRefresh;
+      }
 
-    if (newSnake.head == _food!.position) {
-      _snake = newSnake.grow(_food!.weight);
-      _food = _generateFood();
-      timer.cancel();
-      _timer = _generateTimer();
-    } else {
       _snake = newSnake;
-    }
+      return LoopResult.ok;
+    }();
 
     notifyListeners();
+    return result;
+  }
+
+  _GameMoveSnakeResult _moveSnake(Direction newDirection, Snake newSnake) {
+    final moveResult = _snake!.move(newDirection);
+
+    switch (moveResult.state) {
+      case MoveState.success:
+        return _ResultSuccess(newDirection, moveResult.nextSnake);
+      case MoveState.contradictory:
+        return _moveSnake(_direction!, newSnake);
+      case MoveState.suicide:
+        return _ResultSuicide();
+    }
   }
 
   bool _isSnakeOutOfBound(Snake snake) {
@@ -133,29 +168,11 @@ class GameState extends ChangeNotifier {
     );
   }
 
-  bool _isSnakeSuicide(Snake snake) {
-    final uniquePositions = Set<Position>();
-
-    return snake.body.any((segment) => !uniquePositions.add(segment));
-  }
-
   Food _generateFood() {
     return Food(
       weight: 1,
       // Later add padding for each boundaries
-      position: Position.random(
-        xMax: _xBoundary!,
-        yMax: _yBoundary!,
-      ),
-    );
-  }
-
-  Timer _generateTimer() {
-    final modifier = (50 * log(score + 1)).round();
-
-    return Timer.periodic(
-      Duration(milliseconds: InitialLoopDuration - modifier),
-      _gameLoop,
+      position: _getRandomPosition(_xBoundary!, _yBoundary!),
     );
   }
 
@@ -164,3 +181,14 @@ class GameState extends ChangeNotifier {
     return 'Snake = ${_snake?.body.toString() ?? ''}, Boundary = ($_xBoundary, $_yBoundary)';
   }
 }
+
+abstract class _GameMoveSnakeResult {}
+
+class _ResultSuccess extends _GameMoveSnakeResult {
+  final Direction supposedDirection;
+  final Snake nextSnake;
+
+  _ResultSuccess(this.supposedDirection, this.nextSnake);
+}
+
+class _ResultSuicide extends _GameMoveSnakeResult {}
