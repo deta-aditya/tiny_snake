@@ -1,3 +1,5 @@
+[![Flutter](https://github.com/deta-aditya/tiny_snake/actions/workflows/flutter.yml/badge.svg?branch=main)](https://github.com/deta-aditya/tiny_snake/actions/workflows/flutter.yml)
+
 # Tiny Snake
 
 Classic snake game from your phone, build with Flutter.
