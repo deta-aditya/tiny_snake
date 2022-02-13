@@ -51,7 +51,7 @@ void main() {
       game.next(Loop());
 
       final previousTimer = loop.timer;
-      await Future.delayed(Duration(milliseconds: 100));
+      await Future.delayed(Duration(milliseconds: 200));
 
       expect(loop.timer, allOf(isNotNull, isNot(previousTimer)));
       loop.stop();
