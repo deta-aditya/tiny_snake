@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'game.dart';
+import 'widgets/game_view.dart';
 
 void main() {
   runApp(MyApp());
@@ -91,7 +91,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const Game(),
+                      builder: (context) => const GameView(),
                     ),
                   );
                 },
@@ -99,7 +99,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const Game(isDebugMode: true),
+                      builder: (context) => const GameView(isDebugMode: true),
                     ),
                   );
                 },

@@ -70,6 +70,11 @@ class Snake {
     final uniquePositions = Set<Position>();
     return body.any((segment) => !uniquePositions.add(segment));
   }
+
+  @override
+  String toString() {
+    return 'Snake(body: $body, length $length)';
+  }
 }
 
 enum MoveState {
