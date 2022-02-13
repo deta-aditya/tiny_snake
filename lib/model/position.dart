@@ -20,7 +20,11 @@ class Position {
     final rng = Random();
     this.left = rng.nextInt(xMax);
     this.top = rng.nextInt(yMax);
-  } 
+  }
+
+  Position.origin()
+      : left = 0,
+        top = 0;
 
   @override
   bool operator ==(Object other) {

@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:tiny_snake/model/game/game.dart';
+
 import 'game/i_game.dart';
 
 
@@ -10,7 +12,7 @@ class GameLoop {
   Timer? get timer => _timer;
 
   GameLoop(IGame game) : _game = game {
-    _game.addListener(_handleGameChange);
+    _game.listen(_handleGameChange);
   }
 
   void start() {
@@ -23,29 +25,27 @@ class GameLoop {
   }
 
   void _handleGameChange() {
-    if (_game.isPaused || _game.isGameLost) {
+    final state = _game.state;
+
+    if (state is Pausing || state is GameOver) {
       return stop();
     }
 
-    if (_game.isStarted && _timer == null) {
+    if (state is Playing && _timer == null) {
       return start();
     }
   }
 
   Timer _generateTimer() {
+    final currentPeriod = _game.period;
+
     return Timer.periodic(
-      Duration(milliseconds: _game.period), (timer) {
-        final result = _game.loop();
-        
-        switch (result) {
-          case LoopResult.needStop:
-            timer.cancel();
-            break;
-          case LoopResult.needRefresh:
-            timer.cancel();
-            _timer = _generateTimer();
-            break;
-          default:
+      Duration(milliseconds: currentPeriod), (timer) {
+        _game.next(Loop());
+
+        if (currentPeriod != _game.period) {
+          timer.cancel();
+          _timer = _generateTimer();
         }
       },
     );

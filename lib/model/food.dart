@@ -8,4 +8,7 @@ class Food {
 
   final Position position;
   final int weight;
+
+  @override
+  String toString() => 'Food(position: $position, weight: $weight)';
 }

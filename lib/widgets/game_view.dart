@@ -1,30 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'model/game_loop.dart';
-import 'state/game_state.dart';
-import 'model/direction.dart';
-import 'model/position.dart';
+import '../model/direction.dart';
+import '../model/game/game.dart';
+import '../model/game_loop.dart';
+import '../model/position.dart';
 
-class Game extends StatefulWidget {
-  const Game({Key? key, bool? isDebugMode})
+class GameView extends StatefulWidget {
+  const GameView({Key? key, bool? isDebugMode})
       : this.isDebugMode = isDebugMode ?? false,
         super(key: key);
 
   final bool isDebugMode;
 
   @override
-  State<Game> createState() => _GameState();
+  State<GameView> createState() => _GameViewState();
 }
 
-class _GameState extends State<Game> {
+class _GameViewState extends State<GameView> {
   late GameLoop loop;
-  late GameState game;
+  late Game game;
 
   @override
   void initState() {
     super.initState();
-    game = GameState(
+    game = Game(
+      state: NotStarted(),
       getRandomPosition: Position.random,
       getRandomDirection: randomDirection,
     );
@@ -49,10 +50,10 @@ class _GameState extends State<Game> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(15),
-                  child: Consumer<GameState>(
+                  child: Consumer<Game>(
                     builder: (context, game, child) {
                       return Text(
-                        'Score: ${game.score}',
+                        'Score: ${game.state.score}',
                         style: const TextStyle(fontSize: 18),
                       );
                     },
@@ -61,17 +62,15 @@ class _GameState extends State<Game> {
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final game = context.watch<GameState>();
-                      final xBoundary =
-                          constraints.maxWidth / GameState.UnitSize;
-                      final yBoundary =
-                          constraints.maxHeight / GameState.UnitSize;
+                      final game = context.watch<Game>();
+                      final xBoundary = constraints.maxWidth / game.unitSize;
+                      final yBoundary = constraints.maxHeight / game.unitSize;
 
                       // Run when widget is finished rendering
                       WidgetsBinding.instance
                           ?.addPostFrameCallback((timeStamp) {
-                        if (!game.isStarted) {
-                          game.start(xBoundary, yBoundary);
+                        if (game.state is NotStarted) {
+                          game.next(Start(xBoundary, yBoundary));
                         }
                       });
 
@@ -80,31 +79,34 @@ class _GameState extends State<Game> {
                           GameBoundary(
                             xBoundary: xBoundary,
                             yBoundary: yBoundary,
+                            unitSize: game.unitSize,
                           ),
-                          if (game.isStarted)
-                            FoodView(position: game.foodPosition!),
-                          ...renderSnake(game.snakeBody),
-                          if (game.isPaused) PauseOverlay(),
-                          if (game.isGameLost) GameOverOverlay(),
+                          if (game.state.foodPosition != null)
+                            FoodView(
+                              position: game.state.foodPosition!,
+                              unitSize: game.unitSize,
+                            ),
+                          ...renderSnake(
+                            game.state.snakePosition,
+                            game.unitSize,
+                          ),
+                          if (game.state is Pausing) PauseOverlay(),
+                          if (game.state is GameOver) GameOverOverlay(),
                           if (widget.isDebugMode) DebugOverlay(),
                         ],
                       );
                     },
                   ),
                 ),
-                ControlBar(
-                  onChange: (Direction newDir) {
-                    context.read<GameState>().turn(newDir);
-                  },
-                ),
+                const ControlBar(),
               ],
             ),
-            floatingActionButton: Consumer<GameState>(
+            floatingActionButton: Consumer<Game>(
               builder: (context, game, child) {
-                if (game.isPaused) {
+                if (game.state is Pausing) {
                   return AbortButton();
                 }
-                if (!game.isGameLost) {
+                if (!(game.state is GameOver)) {
                   return PauseButton();
                 }
                 return Container();
@@ -128,7 +130,7 @@ class PauseButton extends StatelessWidget {
       child: Icon(Icons.pause),
       mini: true,
       onPressed: () {
-        context.read<GameState>().pause();
+        context.read<Game>().next(Pause());
       },
     );
   }
@@ -185,7 +187,7 @@ class PauseOverlay extends StatelessWidget {
             ],
           ),
         ),
-        onTap: () => context.read<GameState>().resume(),
+        onTap: () => context.read<Game>().next(Resume()),
       ),
     );
   }
@@ -196,16 +198,18 @@ class GameBoundary extends StatelessWidget {
     Key? key,
     required this.xBoundary,
     required this.yBoundary,
+    required this.unitSize,
   }) : super(key: key);
 
   final double xBoundary;
   final double yBoundary;
+  final int unitSize;
 
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
-      right: (xBoundary - xBoundary.floor()) * GameState.UnitSize,
-      bottom: (yBoundary - yBoundary.floor()) * GameState.UnitSize,
+      right: (xBoundary - xBoundary.floor()) * unitSize,
+      bottom: (yBoundary - yBoundary.floor()) * unitSize,
       child: Container(
         color: Colors.grey.shade200,
       ),
@@ -222,7 +226,7 @@ class DebugOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: Colors.white.withOpacity(0.5),
-      child: Consumer<GameState>(
+      child: Consumer<Game>(
         builder: (context, game, child) {
           return Text(game.toString());
         },
@@ -255,7 +259,7 @@ class GameOverOverlay extends StatelessWidget {
             ),
             ElevatedButton(
               onPressed: () {
-                context.read<GameState>().restart();
+                context.read<Game>().next(Restart());
               },
               child: const Text('Play Again'),
               style: ElevatedButton.styleFrom(
@@ -275,20 +279,22 @@ class FoodView extends StatelessWidget {
   const FoodView({
     Key? key,
     required this.position,
+    required this.unitSize,
   }) : super(key: key);
 
   final Position position;
+  final int unitSize;
 
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      top: position.top.toDouble() * GameState.UnitSize,
-      left: position.left.toDouble() * GameState.UnitSize,
+      top: position.top.toDouble() * unitSize,
+      left: position.left.toDouble() * unitSize,
       child: Container(
-        width: GameState.UnitSize.toDouble(),
-        height: GameState.UnitSize.toDouble(),
+        width: unitSize.toDouble(),
+        height: unitSize.toDouble(),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(GameState.UnitSize.toDouble()),
+          borderRadius: BorderRadius.circular(unitSize.toDouble()),
           color: Colors.orange.shade800,
         ),
       ),
@@ -299,10 +305,7 @@ class FoodView extends StatelessWidget {
 class ControlBar extends StatelessWidget {
   const ControlBar({
     Key? key,
-    required this.onChange,
   }) : super(key: key);
-
-  final void Function(Direction) onChange;
 
   @override
   Widget build(BuildContext context) {
@@ -350,10 +353,11 @@ class DirectionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<GameState>(
+    return Consumer<Game>(
       builder: (context, game, child) {
         return ElevatedButton(
-          onPressed: !game.isPaused ? () => game.turn(direction) : null,
+          onPressed:
+              game.state is Playing ? () => game.next(Turn(direction)) : null,
           child: Text(text),
           style: ElevatedButton.styleFrom(
             shape: const CircleBorder(),
@@ -365,11 +369,12 @@ class DirectionButton extends StatelessWidget {
   }
 }
 
-List<Widget> renderSnake(List<Position> snakeBody) {
+List<Widget> renderSnake(List<Position> snakeBody, int unitSize) {
   return snakeBody
       .map((position) => SnakeBodyView(
             left: position.left.toDouble(),
             top: position.top.toDouble(),
+            unitSize: unitSize,
           ))
       .toList();
 }
@@ -379,24 +384,26 @@ enum SnakeBodyPart { head, middle, tail }
 class SnakeBodyView extends StatelessWidget {
   const SnakeBodyView({
     Key? key,
+    SnakeBodyPart? part,
     required this.left,
     required this.top,
-    SnakeBodyPart? part,
+    required this.unitSize,
   })  : this.part = part ?? SnakeBodyPart.middle,
         super(key: key);
 
   final double left;
   final double top;
   final SnakeBodyPart part;
+  final int unitSize;
 
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      top: top * GameState.UnitSize,
-      left: left * GameState.UnitSize,
+      top: top * unitSize,
+      left: left * unitSize,
       child: Container(
-        width: GameState.UnitSize.toDouble(),
-        height: GameState.UnitSize.toDouble(),
+        width: unitSize.toDouble(),
+        height: unitSize.toDouble(),
         color: Colors.blue,
       ),
     );
