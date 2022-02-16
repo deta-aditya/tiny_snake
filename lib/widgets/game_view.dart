@@ -317,23 +317,24 @@ class ControlBar extends StatelessWidget {
         children: [
           DirectionButton(
             direction: Direction.left,
-            text: '←',
+            icon: Icons.arrow_back,
           ),
           Column(
             children: [
               DirectionButton(
                 direction: Direction.up,
-                text: '↑',
+                icon: Icons.arrow_upward,
               ),
+              const SizedBox(height: 10),
               DirectionButton(
                 direction: Direction.down,
-                text: '↓',
+                icon: Icons.arrow_downward,
               ),
             ],
           ),
           DirectionButton(
             direction: Direction.right,
-            text: '→',
+            icon: Icons.arrow_forward,
           ),
         ],
       ),
@@ -345,11 +346,11 @@ class DirectionButton extends StatelessWidget {
   const DirectionButton({
     Key? key,
     required this.direction,
-    required this.text,
+    required this.icon,
   }) : super(key: key);
 
   final Direction direction;
-  final String text;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
@@ -358,10 +359,10 @@ class DirectionButton extends StatelessWidget {
         return ElevatedButton(
           onPressed:
               game.state is Playing ? () => game.next(Turn(direction)) : null,
-          child: Text(text),
+          child: Icon(icon, size: 20),
           style: ElevatedButton.styleFrom(
             shape: const CircleBorder(),
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(20),
           ),
         );
       },
