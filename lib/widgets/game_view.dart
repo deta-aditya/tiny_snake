@@ -1,10 +1,16 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import 'package:tiny_snake/model/super_food/super_food.dart';
+import 'package:tiny_snake/widgets/super_food_view.dart';
 
 import '../model/direction.dart';
 import '../model/game/game.dart';
 import '../model/game_loop.dart';
 import '../model/position.dart';
+import '../model/randomizer/randomizer.dart';
 
 class GameView extends StatefulWidget {
   const GameView({Key? key, bool? isDebugMode})
@@ -24,10 +30,17 @@ class _GameViewState extends State<GameView> {
   @override
   void initState() {
     super.initState();
+    final randomizer = RandomAdapter(Random());
     game = Game(
       state: NotStarted(),
       getRandomPosition: Position.random,
       getRandomDirection: randomDirection,
+      superFoodSpawnStrategy: ISuperFoodSpawnStrategy.byChance(
+        doubleRandomizer: randomizer,
+        weight: 5,
+        chance: 0.5,
+        age: 30,
+      ),
     );
     loop = GameLoop(game);
   }
@@ -84,6 +97,11 @@ class _GameViewState extends State<GameView> {
                           if (game.state.foodPosition != null)
                             FoodView(
                               position: game.state.foodPosition!,
+                              unitSize: game.unitSize,
+                            ),
+                          if (game.state.superFoodPosition != null)
+                            SuperFoodView(
+                              position: game.state.superFoodPosition!,
                               unitSize: game.unitSize,
                             ),
                           ...renderSnake(

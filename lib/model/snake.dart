@@ -73,7 +73,7 @@ class Snake {
 
   @override
   String toString() {
-    return 'Snake(body: $body, length $length)';
+    return 'Snake(head: $head, body: $body, length $length)';
   }
 }
 

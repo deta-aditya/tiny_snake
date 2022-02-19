@@ -10,6 +10,7 @@ import 'package:tiny_snake/model/game/i_game.dart';
 import 'package:tiny_snake/model/game_loop.dart';
 import 'package:tiny_snake/model/position.dart';
 import 'package:tiny_snake/model/snake.dart';
+import 'package:tiny_snake/model/super_food/super_food.dart';
 
 void main() {
   group('GameLoop', () {
@@ -72,7 +73,7 @@ class FakeGame implements IGame {
   }
 
   @override
-  Food generateFood(int xBoundary, int yBoundary) {
+  Food generateFood(int xBoundary, int yBoundary, int weight) {
     throw UnimplementedError();
   }
 
@@ -98,7 +99,9 @@ class FakeGame implements IGame {
       currentDirection: Direction.up,
       food: dummyFood,
       score: 0,
+      eatCount: 0,
       directionBuffer: ListQueue.of([]),
+      superFoodState: IsNotSpawing(),
     );
 
     switch (action) {
@@ -115,6 +118,7 @@ class FakeGame implements IGame {
           snake: dummySnake,
           food: dummyFood,
           score: 0,
+          eatCount: 0,
           reason: GameOverReason.outOfBound,
         );
         break;
