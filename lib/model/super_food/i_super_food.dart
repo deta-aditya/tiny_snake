@@ -32,6 +32,6 @@ abstract class ISuperFoodSpawnStrategy {
 
 abstract class ISuperFoodAction {}
 
-abstract class SuperFoodState {
+abstract class ISuperFoodState {
   Position? get position;
 }

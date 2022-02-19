@@ -124,7 +124,7 @@ class Playing implements IGameState {
   late final Food food;
   late final int score;
   late final int eatCount;
-  late final SuperFoodState superFoodState;
+  late final ISuperFoodState superFoodState;
   late final ListQueue<Direction> directionBuffer;
 
   Playing({
@@ -254,7 +254,7 @@ class Playing implements IGameState {
     return null;
   }
 
-  SuperFoodState _handleSuperFoodSpawn(Food? currentlyEatenFood, int eatCount, Game game) {
+  ISuperFoodState _handleSuperFoodSpawn(Food? currentlyEatenFood, int eatCount, Game game) {
     if (superFoodState is IsGone && (superFoodState as IsGone).eatCount < eatCount) {
       return IsNotSpawing();
     }
@@ -291,7 +291,7 @@ class Playing implements IGameState {
     Food? food,
     int? score,
     int? eatCount,
-    SuperFoodState? superFoodInfo,
+    ISuperFoodState? superFoodInfo,
     ListQueue<Direction>? directionBuffer,
   }) {
     return Playing(

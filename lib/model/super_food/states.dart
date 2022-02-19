@@ -1,11 +1,11 @@
 part of super_food;
 
-class IsNotSpawing extends SuperFoodState {
+class IsNotSpawing extends ISuperFoodState {
   @override
   Position? get position => null;
 }
 
-class IsSpawning extends SuperFoodState {
+class IsSpawning extends ISuperFoodState {
   final Food food;
   final int ageLeft;
 
@@ -21,7 +21,7 @@ class IsSpawning extends SuperFoodState {
   String toString() => 'IsSpawning(food: $food, ageLeft: $ageLeft)';
 }
 
-class IsGone extends SuperFoodState {
+class IsGone extends ISuperFoodState {
   final int eatCount;
 
   IsGone(this.eatCount);
