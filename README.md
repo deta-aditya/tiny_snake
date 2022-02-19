@@ -2,7 +2,7 @@
 
 # Tiny Snake
 
-Classic snake game from your phone, build with Flutter.
+Classic snake game from retro phone, built with Flutter.
 
 ## Getting Started
 
