@@ -4,6 +4,7 @@ import 'package:tiny_snake/model/food.dart';
 import 'package:tiny_snake/model/game/game.dart';
 import 'package:tiny_snake/model/position.dart';
 import 'package:tiny_snake/model/snake.dart';
+import 'package:tiny_snake/model/super_food/super_food.dart';
 
 void main() {
   group('Game', () {
@@ -100,6 +101,54 @@ void main() {
         expect((game.state as Playing).snake.length, expectedSnakeLength);
         expect(game.period, 215);
       });
+
+      test(
+          'given game can spawn super food, when condition is fulfilled then spawn super food',
+          () {
+        final determinedPosition = Position(left: 50, top: 49);
+        final game = Game(
+          state: NotStarted(),
+          getRandomPosition: (_, __) => determinedPosition,
+          getRandomDirection: defaultGetRandomDirection,
+          superFoodSpawnStrategy: ISuperFoodSpawnStrategy.always(5),
+        );
+        game.next(const Start(
+          defaultXBoundary,
+          defaultYBoundary,
+        ));
+
+        game.next(const Loop());
+
+        expect(game.state, isA<Playing>());
+        expect((game.state as Playing).superFoodState, isA<IsSpawning>());
+      });
+
+      test(
+          'given has spawned super food, when age is passed then remove super food',
+          () {
+        final game = Game(
+          state: NotStarted(),
+          getRandomPosition: defaultGetRandomPosition,
+          getRandomDirection: defaultGetRandomDirection,
+          superFoodSpawnStrategy: ISuperFoodSpawnStrategy.once(2, 2),
+        );
+        game.next(const Start(
+          defaultXBoundary,
+          defaultYBoundary,
+        ));
+
+        game.next(const Loop());
+        
+        // Super food should spawn here
+        game.next(const Loop());
+        game.next(const Loop());
+
+        // Super food should expire here
+        game.next(const Loop());
+
+        expect(game.state, isA<Playing>());
+        expect((game.state as Playing).superFoodState, isA<IsNotSpawing>());
+      });
     });
 
     group('.next(Restart)', () {
@@ -119,6 +168,7 @@ void main() {
         final game = Game(
           state: GameOver(
             score: 5,
+            eatCount: 5,
             xBoundary: defaultXBoundary.floor(),
             yBoundary: defaultYBoundary.floor(),
             reason: GameOverReason.outOfBound,

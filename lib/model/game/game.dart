@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 
 import 'package:tiny_snake/model/game/i_game.dart';
+import 'package:tiny_snake/model/super_food/super_food.dart';
 
 import '../direction.dart';
 import '../food.dart';
@@ -23,6 +24,7 @@ class Game extends ChangeNotifier implements IGame {
   late final int initialLoopDuration;
   late final GetRandomPosition getRandomPosition;
   late final GetRandomDirection getRandomDirection;
+  late final ISuperFoodSpawnStrategy superFoodSpawnStrategy;
 
   IGameState state;
 
@@ -33,14 +35,17 @@ class Game extends ChangeNotifier implements IGame {
     int? unitSize,
     int? initialSnakeSize,
     int? initialLoopDuration,
+    ISuperFoodSpawnStrategy? superFoodSpawnStrategy,
   })  : unitSize = unitSize ?? DefaultUnitSize,
         initialSnakeSize = initialSnakeSize ?? DefaultInitialSnakeSize,
-        initialLoopDuration = initialLoopDuration ?? DefaultInitialLoopDuration;
+        initialLoopDuration = initialLoopDuration ?? DefaultInitialLoopDuration,
+        superFoodSpawnStrategy =
+            superFoodSpawnStrategy ?? ISuperFoodSpawnStrategy.never();
 
   @override
   int get period {
     final modifier = 50;
-    return initialLoopDuration - (modifier * log(state.score + 1)).round();
+    return initialLoopDuration - (modifier * log(state.eatCount + 1)).round();
   }
 
   @override
@@ -53,9 +58,9 @@ class Game extends ChangeNotifier implements IGame {
   }
 
   @override
-  Food generateFood(int xBoundary, int yBoundary) {
+  Food generateFood(int xBoundary, int yBoundary, int weight) {
     return Food(
-      weight: 1,
+      weight: weight,
       position: getRandomPosition(xBoundary, yBoundary),
     );
   }
@@ -87,7 +92,13 @@ class NotStarted implements IGameState {
   int get score => 0;
 
   @override
+  int get eatCount => 0;
+
+  @override
   Position? get foodPosition => null;
+
+  @override
+  Position? get superFoodPosition => null;
 
   @override
   List<Position> get snakePosition => [];
@@ -112,6 +123,8 @@ class Playing implements IGameState {
   late final Direction currentDirection;
   late final Food food;
   late final int score;
+  late final int eatCount;
+  late final SuperFoodState superFoodState;
   late final ListQueue<Direction> directionBuffer;
 
   Playing({
@@ -121,18 +134,22 @@ class Playing implements IGameState {
     required this.currentDirection,
     required this.food,
     required this.score,
+    required this.eatCount,
+    required this.superFoodState,
     required this.directionBuffer,
   });
 
-  static Playing initial(int xBoundary, int yBoundary, Game game) {
+  factory Playing.initial(int xBoundary, int yBoundary, Game game) {
     return Playing(
       xBoundary: xBoundary,
       yBoundary: yBoundary,
       currentDirection: game.getRandomDirection(),
-      food: game.generateFood(xBoundary, yBoundary),
+      food: game.generateFood(xBoundary, yBoundary, 1),
       snake: game.generateSnake(xBoundary, yBoundary, game.initialSnakeSize),
       directionBuffer: ListQueue.of([]),
       score: 0,
+      eatCount: 0,
+      superFoodState: IsNotSpawing(),
     );
   }
 
@@ -140,10 +157,13 @@ class Playing implements IGameState {
   Position? get foodPosition => food.position;
 
   @override
+  Position? get superFoodPosition => superFoodState.position;
+
+  @override
   List<Position> get snakePosition => snake.body;
 
   @override
-  IGameState next(IGame game, IGameAction action) {
+  IGameState next(covariant Game game, IGameAction action) {
     if (action is Loop) {
       final newDirectionFromBuffer = directionBuffer.isNotEmpty
           ? directionBuffer.removeLast()
@@ -161,19 +181,26 @@ class Playing implements IGameState {
         return _gameOver(GameOverReason.outOfBound);
       }
 
-      if (_isSnakeEating(moveResult.nextSnake)) {
-        final grownSnake = moveResult.nextSnake.grow(food.weight);
+      final eatenFood = _isSnakeEating(moveResult.nextSnake);
+
+      if (eatenFood != null) {
+        final grownSnake = moveResult.nextSnake.grow(eatenFood.weight);
         return copyWith(
-          score: score + 1,
+          score: score + eatenFood.weight,
+          eatCount: eatCount + 1,
           snake: grownSnake,
           currentDirection: nextDirection,
-          food: game.generateFood(xBoundary, yBoundary),
+          food: eatenFood == food
+              ? game.generateFood(xBoundary, yBoundary, 1)
+              : food,
+          superFoodInfo: _handleSuperFoodSpawn(eatenFood, eatCount + 1, game),
         );
       }
 
       return copyWith(
         snake: moveResult.nextSnake,
         currentDirection: nextDirection,
+        superFoodInfo: _handleSuperFoodSpawn(eatenFood, eatCount, game),
       );
     }
 
@@ -198,6 +225,10 @@ class Playing implements IGameState {
       food: food,
       score: score,
       reason: reason,
+      eatCount: eatCount,
+      superFood: superFoodState is IsSpawning
+          ? (superFoodState as IsSpawning).food
+          : null,
     );
   }
 
@@ -211,8 +242,45 @@ class Playing implements IGameState {
     );
   }
 
-  bool _isSnakeEating(Snake snake) {
-    return snake.head == food.position;
+  Food? _isSnakeEating(Snake snake) {
+    if (snake.head == foodPosition) {
+      return food;
+    }
+
+    if (snake.head == superFoodPosition) {
+      return (superFoodState as IsSpawning).food;
+    }
+
+    return null;
+  }
+
+  SuperFoodState _handleSuperFoodSpawn(Food? currentlyEatenFood, int eatCount, Game game) {
+    if (superFoodState is IsGone && (superFoodState as IsGone).eatCount < eatCount) {
+      return IsNotSpawing();
+    }
+
+    if (superFoodState is IsSpawning) {
+      final info = superFoodState as IsSpawning;
+
+      if (info.food == currentlyEatenFood || info.ageLeft == 0) {
+        return IsGone(eatCount);
+      }
+
+      return IsSpawning(food: info.food, ageLeft: info.ageLeft - 1);
+    }
+
+    if (superFoodState is IsNotSpawing && currentlyEatenFood != null) {
+      final result = game.superFoodSpawnStrategy.shouldSpawnSuperFood(eatCount);
+
+      if (result is Spawn) {
+        return IsSpawning(
+          food: game.generateFood(xBoundary, yBoundary, result.weight),
+          ageLeft: result.age,
+        );
+      }
+    }
+
+    return superFoodState;
   }
 
   Playing copyWith({
@@ -222,6 +290,8 @@ class Playing implements IGameState {
     Direction? currentDirection,
     Food? food,
     int? score,
+    int? eatCount,
+    SuperFoodState? superFoodInfo,
     ListQueue<Direction>? directionBuffer,
   }) {
     return Playing(
@@ -231,13 +301,15 @@ class Playing implements IGameState {
       currentDirection: currentDirection ?? this.currentDirection,
       food: food ?? this.food,
       score: score ?? this.score,
+      eatCount: eatCount ?? this.eatCount,
+      superFoodState: superFoodInfo ?? this.superFoodState,
       directionBuffer: directionBuffer ?? this.directionBuffer,
     );
   }
 
   @override
   String toString() {
-    return 'Playing(xBoundary: $xBoundary, yBoundary: $yBoundary, snake: $snake, currentDirection: $currentDirection, food: $food, score: $score, directionBuffer: $directionBuffer)';
+    return 'Playing(xBoundary: $xBoundary, yBoundary: $yBoundary, snake: $snake, currentDirection: $currentDirection, food: $food, score: $score, eatCount: $eatCount, superFoodState: $superFoodState, directionBuffer: $directionBuffer)';
   }
 }
 
@@ -247,6 +319,8 @@ class GameOver implements IGameState {
   late final Snake snake;
   late final Food food;
   late final int score;
+  late final int eatCount;
+  late final Food? superFood;
   late final GameOverReason reason;
 
   GameOver({
@@ -256,10 +330,15 @@ class GameOver implements IGameState {
     required this.food,
     required this.score,
     required this.reason,
+    required this.eatCount,
+    this.superFood,
   });
 
   @override
   Position? get foodPosition => food.position;
+
+  @override
+  Position? get superFoodPosition => superFood?.position;
 
   @override
   List<Position> get snakePosition => snake.body;
@@ -301,6 +380,12 @@ class Pausing implements IGameState {
 
   @override
   int get score => previousState.score;
+
+  @override
+  int get eatCount => previousState.eatCount;
+
+  @override
+  Position? get superFoodPosition => previousState.superFoodPosition;
 
   @override
   String toString() => 'Pausing(previousState: $previousState)';

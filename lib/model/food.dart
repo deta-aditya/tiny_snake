@@ -1,6 +1,8 @@
+import 'package:equatable/equatable.dart';
+
 import 'position.dart';
 
-class Food {
+class Food extends Equatable {
   Food({
     required this.position,
     required this.weight,
@@ -11,4 +13,7 @@ class Food {
 
   @override
   String toString() => 'Food(position: $position, weight: $weight)';
+
+  @override
+  List<Object?> get props => [position, weight];
 }
