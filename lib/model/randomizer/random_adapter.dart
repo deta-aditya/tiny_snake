@@ -1,4 +1,3 @@
-
 part of randomizer;
 
 class RandomAdapter implements IDoubleRandomizer {
